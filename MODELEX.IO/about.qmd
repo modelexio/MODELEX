@@ -1,6 +1,5 @@
 ---
 title: "About"
-image: profile.jpg
 about:
   template: jolla
   links:
@@ -16,4 +15,8 @@ about:
 
 ---
 
-About this blog
+Welcome to modelex.io, an online platform dedicated to the application of machine learning and deep learning.
+
+Our website is designed to bring together a community passionate about the recent advances in the fields of machine learning and deep learning. We believe that these technologies have the potential to revolutionize many sectors, from industry to healthcare, finance, and entertainment.
+
+On modelex.io, you will find informative and instructive blog articles on the latest advances in machine learning, as well as practical tutorials to help you get started applying these technologies yourself. We cover a variety of topics, from supervised and unsupervised learning to deep neural networks, natural language processing, and computer vision.
