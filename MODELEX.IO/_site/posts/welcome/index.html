@@ -6,10 +6,10 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="author" content="Tristan O’Malley">
+<meta name="author" content="">
 <meta name="dcterms.date" content="2023-04-24">
 
-<title>MODELEX.IO - Welcome To My Blog</title>
+<title>MODELEX.IO - Text generation with LSTM</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -22,6 +22,69 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1.6em;
   vertical-align: middle;
 }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { color: #008000; } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { color: #008000; font-weight: bold; } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
 </style>
 
 
@@ -105,9 +168,9 @@ ul.task-list li input[type="checkbox"] {
 <header id="title-block-header" class="quarto-title-block default page-columns page-full">
   <div class="quarto-title-banner page-columns page-full">
     <div class="quarto-title column-body">
-      <h1 class="title">Welcome To My Blog</h1>
+      <h1 class="title">Text generation with LSTM</h1>
                                 <div class="quarto-categories">
-                <div class="quarto-category">news</div>
+                <div class="quarto-category">NLP</div>
               </div>
                   </div>
   </div>
@@ -115,12 +178,6 @@ ul.task-list li input[type="checkbox"] {
   
   <div class="quarto-title-meta">
 
-      <div>
-      <div class="quarto-title-meta-heading">Author</div>
-      <div class="quarto-title-meta-contents">
-               <p>Tristan O’Malley </p>
-            </div>
-    </div>
       
       <div>
       <div class="quarto-title-meta-heading">Published</div>
@@ -143,11 +200,324 @@ ul.task-list li input[type="checkbox"] {
 
 
 
-<p>This is the first post in a Quarto blog. Welcome!</p>
-<p><img src="thumbnail.jpg" class="img-fluid"></p>
-<p>Since this post doesn’t specify an explicit <code>image</code>, the first image in the post will be used in the listing page of posts.</p>
+<p>This notebook contains the code samples found in Chapter 8, Section 1 of <a href="https://www.manning.com/books/deep-learning-with-r">Deep Learning with R</a>. Note that the original text features far more content, in particular further explanations and figures: in this notebook, you will only find source code and related comments.</p>
+<section id="implementing-character-level-lstm-text-generation" class="level2">
+<h2 class="anchored" data-anchor-id="implementing-character-level-lstm-text-generation">Implementing character-level LSTM text generation</h2>
+<p>Let’s put these ideas in practice in a Keras implementation. The first thing we need is a lot of text data that we can use to learn a language model. You could use any sufficiently large text file or set of text files – Wikipedia, the Lord of the Rings, etc. In this example we will use some of the writings of Nietzsche, the late-19th century German philosopher (translated to English). The language model we will learn will thus be specifically a model of Nietzsche’s writing style and topics of choice, rather than a more generic model of the English language.</p>
+</section>
+<section id="preparing-the-data" class="level2">
+<h2 class="anchored" data-anchor-id="preparing-the-data">Preparing the data</h2>
+<p>Let’s start by downloading the corpus and converting it to lowercase:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(keras)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(stringr)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>path <span class="ot">&lt;-</span> <span class="fu">get_file</span>(</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="st">"nietzsche.txt"</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">origin =</span> <span class="st">"https://s3.amazonaws.com/text-datasets/nietzsche.txt"</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>text <span class="ot">&lt;-</span> <span class="fu">tolower</span>(<span class="fu">readChar</span>(path, <span class="fu">file.info</span>(path)<span class="sc">$</span>size))</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Corpus length:"</span>, <span class="fu">nchar</span>(text), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Corpus length: 600893 </code></pre>
+</div>
+</div>
+<p>Next, you’ll extract partially overlapping sequences of length <code>maxlen</code>, one-hot encode them, and pack them in a 3D array <code>x</code> of shape <code>(sequences, maxlen, unique_characters)</code>. Simultaneously, you’ll prepare an array <code>y</code> containing the corresponding targets: the one-hot-encoded characters that come after each extracted sequence.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>maxlen <span class="ot">&lt;-</span> <span class="dv">60</span>  <span class="co"># Length of extracted character sequences</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>step <span class="ot">&lt;-</span> <span class="dv">3</span>  <span class="co"># We sample a new sequence every `step` characters</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>text_indexes <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="dv">1</span>, <span class="fu">nchar</span>(text) <span class="sc">-</span> maxlen, <span class="at">by =</span> step)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co"># This holds our extracted sequences</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>sentences <span class="ot">&lt;-</span> <span class="fu">str_sub</span>(text, text_indexes, text_indexes <span class="sc">+</span> maxlen <span class="sc">-</span> <span class="dv">1</span>)</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="co"># This holds the targets (the follow-up characters)</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>next_chars <span class="ot">&lt;-</span> <span class="fu">str_sub</span>(text, text_indexes <span class="sc">+</span> maxlen, text_indexes <span class="sc">+</span> maxlen)</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Number of sequences: "</span>, <span class="fu">length</span>(sentences), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Number of sequences:  200278 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># List of unique characters in the corpus</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>chars <span class="ot">&lt;-</span> <span class="fu">unique</span>(<span class="fu">sort</span>(<span class="fu">strsplit</span>(text, <span class="st">""</span>)[[<span class="dv">1</span>]]))</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Unique characters:"</span>, <span class="fu">length</span>(chars), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Unique characters: 57 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Dictionary mapping unique characters to their index in `chars`</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>char_indices <span class="ot">&lt;-</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(chars) </span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(char_indices) <span class="ot">&lt;-</span> chars</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Next, one-hot encode the characters into binary arrays.</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Vectorization...</span><span class="sc">\n</span><span class="st">"</span>) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Vectorization...</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">array</span>(0L, <span class="at">dim =</span> <span class="fu">c</span>(<span class="fu">length</span>(sentences), maxlen, <span class="fu">length</span>(chars)))</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">array</span>(0L, <span class="at">dim =</span> <span class="fu">c</span>(<span class="fu">length</span>(sentences), <span class="fu">length</span>(chars)))</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(sentences)) {</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  sentence <span class="ot">&lt;-</span> <span class="fu">strsplit</span>(sentences[[i]], <span class="st">""</span>)[[<span class="dv">1</span>]]</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (t <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(sentence)) {</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    char <span class="ot">&lt;-</span> sentence[[t]]</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    x[i, t, char_indices[[char]]] <span class="ot">&lt;-</span> <span class="dv">1</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  next_char <span class="ot">&lt;-</span> next_chars[[i]]</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>  y[i, char_indices[[next_char]]] <span class="ot">&lt;-</span> <span class="dv">1</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="building-the-network" class="level2">
+<h2 class="anchored" data-anchor-id="building-the-network">Building the network</h2>
+<p>This network is a single LSTM layer followed by a dense classifier and softmax over all possible characters. But note that recurrent neural networks aren’t the only way to do sequence data generation; 1D convnets also have proven extremely successful at this task in recent times.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">keras_model_sequential</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">layer_lstm</span>(<span class="at">units =</span> <span class="dv">128</span>, <span class="at">input_shape =</span> <span class="fu">c</span>(maxlen, <span class="fu">length</span>(chars))) <span class="sc">%&gt;%</span> </span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">layer_dense</span>(<span class="at">units =</span> <span class="fu">length</span>(chars), <span class="at">activation =</span> <span class="st">"softmax"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Since our targets are one-hot encoded, we will use <code>categorical_crossentropy</code> as the loss to train the model:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>optimizer <span class="ot">&lt;-</span> <span class="fu">optimizer_rmsprop</span>(<span class="at">lr =</span> <span class="fl">0.01</span>)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>model <span class="sc">%&gt;%</span> <span class="fu">compile</span>(</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">loss =</span> <span class="st">"categorical_crossentropy"</span>, </span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">optimizer =</span> optimizer</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>)   </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="training-the-language-model-and-sampling-from-it" class="level2">
+<h2 class="anchored" data-anchor-id="training-the-language-model-and-sampling-from-it">Training the language model and sampling from it</h2>
+<p>Given a trained model and a seed text snippet, we generate new text by repeatedly:</p>
+<ul>
+<li><ol type="1">
+<li>Drawing from the model a probability distribution over the next character given the text available so far</li>
+</ol></li>
+<li><ol start="2" type="1">
+<li>Reweighting the distribution to a certain “temperature”</li>
+</ol></li>
+<li><ol start="3" type="1">
+<li>Sampling the next character at random according to the reweighted distribution</li>
+</ol></li>
+<li><ol start="4" type="1">
+<li>Adding the new character at the end of the available text</li>
+</ol></li>
+</ul>
+<p>This is the code we use to reweight the original probability distribution coming out of the model, and draw a character index from it (the “sampling function”):</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>sample_next_char <span class="ot">&lt;-</span> <span class="cf">function</span>(preds, <span class="at">temperature =</span> <span class="fl">1.0</span>) {</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  preds <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(preds)</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  preds <span class="ot">&lt;-</span> <span class="fu">log</span>(preds) <span class="sc">/</span> temperature</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  exp_preds <span class="ot">&lt;-</span> <span class="fu">exp</span>(preds)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>  preds <span class="ot">&lt;-</span> exp_preds <span class="sc">/</span> <span class="fu">sum</span>(exp_preds)</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">which.max</span>(<span class="fu">t</span>(<span class="fu">rmultinom</span>(<span class="dv">1</span>, <span class="dv">1</span>, preds)))</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Finally, the following loop repeatedly trains and generates text. You begin generating text using a range of different temperatures after every epoch. This allows you to see how the generated text evolves as the model begins to converge, as well as the impact of temperature in the sampling strategy.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (epoch <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>) {</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"epoch"</span>, epoch, <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Fit the model for 1 epoch on the available training data</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>  model <span class="sc">%&gt;%</span> <span class="fu">fit</span>(x, y, <span class="at">batch_size =</span> <span class="dv">128</span>, <span class="at">epochs =</span> <span class="dv">1</span>) </span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Select a text seed at random</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>  start_index <span class="ot">&lt;-</span> <span class="fu">sample</span>(<span class="dv">1</span><span class="sc">:</span>(<span class="fu">nchar</span>(text) <span class="sc">-</span> maxlen <span class="sc">-</span> <span class="dv">1</span>), <span class="dv">1</span>)  </span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>  seed_text <span class="ot">&lt;-</span> <span class="fu">str_sub</span>(text, start_index, start_index <span class="sc">+</span> maxlen <span class="sc">-</span> <span class="dv">1</span>)</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"--- Generating with seed:"</span>, seed_text, <span class="st">"</span><span class="sc">\n\n</span><span class="st">"</span>)</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (temperature <span class="cf">in</span> <span class="fu">c</span>(<span class="fl">0.2</span>, <span class="fl">0.5</span>, <span class="fl">1.0</span>, <span class="fl">1.2</span>)) {</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">"------ temperature:"</span>, temperature, <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cat</span>(seed_text, <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>    generated_text <span class="ot">&lt;-</span> seed_text</span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a>     <span class="co"># We generate 20 characters</span></span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">20</span>) {</span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a>      sampled <span class="ot">&lt;-</span> <span class="fu">array</span>(<span class="dv">0</span>, <span class="at">dim =</span> <span class="fu">c</span>(<span class="dv">1</span>, maxlen, <span class="fu">length</span>(chars)))</span>
+<span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a>      generated_chars <span class="ot">&lt;-</span> <span class="fu">strsplit</span>(generated_text, <span class="st">""</span>)[[<span class="dv">1</span>]]</span>
+<span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a>      <span class="cf">for</span> (t <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(generated_chars)) {</span>
+<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a>        char <span class="ot">&lt;-</span> generated_chars[[t]]</span>
+<span id="cb13-28"><a href="#cb13-28" aria-hidden="true" tabindex="-1"></a>        sampled[<span class="dv">1</span>, t, char_indices[[char]]] <span class="ot">&lt;-</span> <span class="dv">1</span></span>
+<span id="cb13-29"><a href="#cb13-29" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb13-30"><a href="#cb13-30" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb13-31"><a href="#cb13-31" aria-hidden="true" tabindex="-1"></a>      preds <span class="ot">&lt;-</span> model <span class="sc">%&gt;%</span> <span class="fu">predict</span>(sampled, <span class="at">verbose =</span> <span class="dv">0</span>)</span>
+<span id="cb13-32"><a href="#cb13-32" aria-hidden="true" tabindex="-1"></a>      next_index <span class="ot">&lt;-</span> <span class="fu">sample_next_char</span>(preds[<span class="dv">1</span>,], temperature)</span>
+<span id="cb13-33"><a href="#cb13-33" aria-hidden="true" tabindex="-1"></a>      next_char <span class="ot">&lt;-</span> chars[[next_index]]</span>
+<span id="cb13-34"><a href="#cb13-34" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb13-35"><a href="#cb13-35" aria-hidden="true" tabindex="-1"></a>      generated_text <span class="ot">&lt;-</span> <span class="fu">paste0</span>(generated_text, next_char)</span>
+<span id="cb13-36"><a href="#cb13-36" aria-hidden="true" tabindex="-1"></a>      generated_text <span class="ot">&lt;-</span> <span class="fu">substring</span>(generated_text, <span class="dv">2</span>)</span>
+<span id="cb13-37"><a href="#cb13-37" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb13-38"><a href="#cb13-38" aria-hidden="true" tabindex="-1"></a>      <span class="fu">cat</span>(next_char)</span>
+<span id="cb13-39"><a href="#cb13-39" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb13-40"><a href="#cb13-40" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n\n</span><span class="st">"</span>)</span>
+<span id="cb13-41"><a href="#cb13-41" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb13-42"><a href="#cb13-42" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>epoch 1 
+--- Generating with seed: c philosophy must be very much on its guard lest on
+account  
+
+------ temperature: 0.2 
+c philosophy must be very much on its guard lest on
+account  
+and and anderes and 
+
+------ temperature: 0.5 
+c philosophy must be very much on its guard lest on
+account  
+in and in thor the b
+
+------ temperature: 1 
+c philosophy must be very much on its guard lest on
+account  
+fiongopor ingelstron
+
+------ temperature: 1.2 
+c philosophy must be very much on its guard lest on
+account  
+tf
+rhusy; _ape vo th
+
+epoch 2 
+--- Generating with seed: tep, not the opposite of it.
 
 
+
+
+the religious life.
+
+
+108
+
+ 
+
+------ temperature: 0.2 
+tep, not the opposite of it.
+
+
+
+
+the religious life.
+
+
+108
+
+ 
+his in the bed and t
+
+------ temperature: 0.5 
+tep, not the opposite of it.
+
+
+
+
+the religious life.
+
+
+108
+
+ 
+ a be merse bely the
+
+------ temperature: 1 
+tep, not the opposite of it.
+
+
+
+
+the religious life.
+
+
+108
+
+ 
+" kin the , wo the d
+
+------ temperature: 1.2 
+tep, not the opposite of it.
+
+
+
+
+the religious life.
+
+
+108
+
+ 
+casdtoney of comyeva</code></pre>
+</div>
+</div>
+<p>Here, we used the random seed text “new faculty, and the jubilation reached its climax when kant.” Here’s what you get at epoch 20, long before the model has fully converged, with <code>temperature=0.2</code>:</p>
+<pre><code>new faculty, and the jubilation reached its climax when kant and such a man
+in the same time the spirit of the surely and the such the such 
+as a man is the sunligh and subject the present to the superiority of the 
+special pain the most man and strange the subjection of the 
+special conscience the special and nature and such men the subjection of the
+special men, the most surely the subjection of the special 
+intellect of the subjection of the same things and</code></pre>
+<p>Here’s the result with <code>temperature=0.5</code>:</p>
+<pre><code>new faculty, and the jubilation reached its climax when kant in the eterned 
+and such man as it's also become himself the condition of the 
+experience of off the basis the superiory and the special morty of the 
+strength, in the langus, as which the same time life and "even who 
+discless the mankind, with a subject and fact all you have to be the stand
+and lave no comes a troveration of the man and surely the 
+conscience the superiority, and when one must be w</code></pre>
+<p>And here’s what you get with <code>temperature=1.0</code>:</p>
+<pre><code>new faculty, and the jubilation reached its climax when kant, as a 
+periliting of manner to all definites and transpects it it so 
+hicable and ont him artiar resull
+too such as if ever the proping to makes as cnecience. to been juden, 
+all every could coldiciousnike hother aw passife, the plies like 
+which might thiod was account, indifferent germin, that everythery 
+certain destrution, intellect into the deteriorablen origin of moralian, 
+and a lessority o</code></pre>
+<p>At epoch 60, the model has mostly converged, and the text starts to look significantly more coherent. Here’s the result with <code>temperature=0.2</code>:</p>
+<pre><code>cheerfulness, friendliness and kindness of a heart are the sense of the 
+spirit is a man with the sense of the sense of the world of the 
+self-end and self-concerning the subjection of the strengthorixes--the 
+subjection of the subjection of the subjection of the 
+self-concerning the feelings in the superiority in the subjection of the 
+subjection of the spirit isn't to be a man of the sense of the 
+subjection and said to the strength of the sense of the</code></pre>
+<p>Here is <code>temperature=0.5</code>:</p>
+<pre><code>cheerfulness, friendliness and kindness of a heart are the part of the soul
+who have been the art of the philosophers, and which the one 
+won't say, which is it the higher the and with religion of the frences. 
+the life of the spirit among the most continuess of the 
+strengther of the sense the conscience of men of precisely before enough 
+presumption, and can mankind, and something the conceptions, the 
+subjection of the sense and suffering and the</code></pre>
+<p>And here is <code>temperature=1.0</code>:</p>
+<pre><code>cheerfulness, friendliness and kindness of a heart are spiritual by the 
+ciuture for the
+entalled is, he astraged, or errors to our you idstood--and it needs, 
+to think by spars to whole the amvives of the newoatly, prefectly 
+raals! it was
+name, for example but voludd atu-especity"--or rank onee, or even all 
+"solett increessic of the world and
+implussional tragedy experience, transf, or insiderar,--must hast
+if desires of the strubction is be stronges</code></pre>
+<p>As you can see, a low temperature results in extremely repetitive and predictable text, but where local structure is highly realistic: in particular, all words (a word being a local pattern of characters) are real English words. With higher temperatures, the generated text becomes more interesting, surprising, even creative; it may sometimes invent completely new words that sound somewhat plausible (such as “eterned” or “troveration”). With a high temperature, the local structure starts breaking down and most words look like semi-random strings of characters. Without a doubt, here 0.5 is the most interesting temperature for text generation in this specific setup. Always experiment with multiple sampling strategies! A clever balance between learned structure and randomness is what makes generation interesting.</p>
+<p>Note that by training a bigger model, longer, on more data, you can achieve generated samples that will look much more coherent and realistic than ours. But of course, don’t expect to ever generate any meaningful text, other than by random chance: all we are doing is sampling data from a statistical model of which characters come after which characters. Language is a communication channel, and there is a distinction between what communications are about, and the statistical structure of the messages in which communications are encoded. To evidence this distinction, here is a thought experiment: what if human language did a better job at compressing communications, much like our computers do with most of our digital communications? Then language would be no less meaningful, yet it would lack any intrinsic statistical structure, thus making it impossible to learn a language model like we just did.</p>
+</section>
+<section id="take-aways" class="level2">
+<h2 class="anchored" data-anchor-id="take-aways">Take aways</h2>
+<ul>
+<li>We can generate discrete sequence data by training a model to predict the next tokens(s) given previous tokens.</li>
+<li>In the case of text, such a model is called a “language model” and could be based on either words or characters.</li>
+<li>Sampling the next token requires balance between adhering to what the model judges likely, and introducing randomness.</li>
+<li>One way to handle this is the notion of <em>softmax temperature</em>. Always experiment with different temperatures to find the “right” one.</li>
+</ul>
+
+
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
